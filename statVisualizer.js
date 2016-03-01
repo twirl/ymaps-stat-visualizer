@@ -15,9 +15,45 @@ ymaps.modules.define('StatVisualizer', [
         vow,
         templateLayoutFactory) {
 
+        /**
+         * Creates a statistical data visualizer. This module
+         * allows displaying infographics in a form of regions
+         * on map, each colored according to some statistical
+         * value.
+         * @class StatVisualizer
+         * @param {Object} parameters Parameters.
+         * @param {String|String[]} parameters.regions ISO codes of regions
+         * to display. The module uses data defined in
+         * Yandex Maps Regions module, available values are: 'RU', 'UA',
+         * 'BY', 'KZ', 'TR' for corresponding countries, and '001' for entire
+         * world.
+         * @param {Object} parameters.data Statistical data to display.
+         * @param {String} parameters.data.source Raw source data in a form
+         * of CSV string. First line indicates columns' names, other lines — values.
+         * @param {Object} parameters.mapping Mapping options
+         * @param {String} parameters.mapping.id Name of a column which contains
+         * an ISO code of region
+         * @param {String} parameters.mapping.target Name of a column which contains
+         * a statistical value to display.
+         * @param {Object} parameters.colors Coloring parameters.
+         * @param {Number} parameters.colors.minValue Minimal allowed statistical value.
+         * @param {Number} parameters.colors.maxValue Maximal allowed statistical value.
+         * @param {String} [parameters.colors.low = '00ff00'] Color corresponding to minimal
+         * value, in a RGB(A) form.
+         * @param {String} [parameters.colors.high = 'ff0000'] Color corresponding to maximal
+         * value, in a RGB(A) form.
+         * @param {Boolean} [parameters.colors.discrete = false] true — there is a predefined
+         * number of color levels; false otherwise.
+         * @param {Number[]} [parameters.colors.grades] If `parameters.colors.discrete` option
+         * is set to true — an array of statistical values representing each level color.
+         * @param {Object} [parameters.balloon] Objects' balloon parameters.
+         * @param {String} [parameters.balloon.template] Balloon template.
+         * @param {Object} [parameters.hint] Objects' hint parameters.
+         * @param {String} [parameters.hint.template] Hint template.
+         */
     var StatVisualizer = function (parameters) {
             this.regions = parameters.regions;
-            this.colors = this.prepareColors(parameters.colors);
+            this.colors = this.prepareColors(parameters.colors || {});
             this.data = this.prepareData(parameters.data);
 
             StatVisualizer.superclass.constructor.call(this, parameters.options);
@@ -31,6 +67,11 @@ ymaps.modules.define('StatVisualizer', [
             if (parameters.hint && parameters.hint.template) {
                 this.objectManager.objects.options.set({
                     hintContentLayout: templateLayoutFactory.createClass(parameters.hint.template)
+                })
+            }
+            if (parameters.balloon && parameters.balloon.template) {
+                this.objectManager.objects.options.set({
+                    balloonContentLayout: templateLayoutFactory.createClass(parameters.balloon.template)
                 })
             }
 
@@ -118,7 +159,7 @@ ymaps.modules.define('StatVisualizer', [
 
         prepareColors: function (colorOptions) {
             var colors = {
-                    discrete: colorOptions.discrete,
+                    discrete: colorOptions.discrete || false,
                     low: this.parseRgbaColor(colorOptions.low || '#0f0'),
                     high: this.parseRgbaColor(colorOptions.high || '#f00'),
                     grades: []
@@ -164,9 +205,11 @@ ymaps.modules.define('StatVisualizer', [
                 var part = '0';
                 if ((i + 1) * chunkSize <= color.length) {
                     part = color.substring(i * chunkSize, (i + 1) * chunkSize);
-                }
-                if (chunkSize == 1) {
-                    part = part + part;
+                    if (chunkSize == 1) {
+                        part = part + part;
+                    }
+                } else {
+                    part = 'ff';
                 }
                 parts.push(parseInt(part, 16));
             }
@@ -206,9 +249,9 @@ ymaps.modules.define('StatVisualizer', [
                         type: geoObject.geometry.getType(),
                         coordinates: geoObject.geometry.getCoordinates()
                     },
-                    properties: {
+                    properties: extend({}, properties, {
                         regionId: regionId
-                    },
+                    }),
                     options: {}
                 };
 

@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head>
+    <meta charset="utf-8"/>
+    <title>Yandex Maps API Stat Visualizer module example</title>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=en_US&mode=debug"></script>
+    <script src="statVisualizer.js"></script>
+    <style>
+        html, body, #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <script>
+        ymaps.ready({
+            require: ['StatVisualizer']
+        }).done(function () {
+            fetch('example.csv').then(function (response) {
+                return response.text();
+            }).then(function (text) {
+                var map = new ymaps.Map('map', {
+                        center: [55, 37],
+                        zoom: 4
+                    }),
+                    statVisualizer = new ymaps.StatVisualizer({
+                        regions: 'RU',
+                        data: {
+                            source: text,
+                            mapping: {
+                                id: 'id',
+                                target: 'value'
+                            }
+                        },
+                        colors: {
+                            minValue: 0,
+                            maxValue: 12
+                        },
+                        hint: {
+                            template: '<strong>{{ properties.name }}</strong><br/>Population: {{ properties.value }} mln'
+                        }
+                    });
+
+                map.geoObjects.add(statVisualizer);
+            });
+        });
+    </script>
+</head><body>
+    <div id="map"></div>
+</body></html>
