@@ -2,7 +2,7 @@
 <html><head>
     <meta charset="utf-8"/>
     <title>Yandex Maps API Stat Visualizer module example</title>
-    <script src="https://api-maps.yandex.ru/2.1/?lang=en_US&mode=debug"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&mode=debug&key=ALrsKlcBAAAA04RfXwMAE3glTsgfYohKrOdgtinxi43jJwsAAAAAAAAAAADaJy0VFaJpVcAtfNTwhU4y2Oc34g=="></script>
     <script src="statVisualizer.js"></script>
     <style>
         html, body, #map {
@@ -16,7 +16,7 @@
         ymaps.ready({
             require: ['StatVisualizer']
         }).done(function () {
-            fetch('example.csv').then(function (response) {
+            fetch('cities.csv').then(function (response) {
                 return response.text();
             }).then(visualize);
         });
@@ -24,14 +24,53 @@
         function visualize (text) {
             var cities = [],
                 stat = [];
-            text.split('\n').forEach(function (line) {
-                var parts = line.split('\t');
-                cities.push(parts[0]);
-                stat.push(parts.slice(1));
+            text.split('\n').forEach(function (line, index) {
+                if (index > 0) {
+                    var parts = line.split('\t');
+                    cities.push(parts[0]);
+                    stat.push(parts.slice(1).reduce(function (grades, cell) {
+                        if (cell == 'Ваще норм') {
+                            grades.push('1');
+                        } else if (cell == 'Так себе') {
+                            grades.push('0');
+                        } else if (cell == 'Буэээ') {
+                            grades.push('-1');
+                        }
+                        return grades;
+                    }, []));
+                }
             });
             
-            console.log(cities);
-            console.log(stat);
+            var placemarks = new ymaps.GeoObjectCollection(),
+                presets = {
+                    '-1': 'islands#brownIcon',
+                    '0': 'islands#grayIcon',
+                    '1': 'islands#greenIcon'
+                },
+                coords = [];
+
+            ymaps.vow.all(cities.map(function (city) {
+                return ymaps.geocode(city);
+            })).done(function (cities) {
+                cities.forEach(function (city, index) {
+                    var first = city.geoObjects.get(0);
+
+                    coords.push(first && first.geometry.getCoordinates() || 'n/a');
+
+                    /*stat[index].forEach(function (grade) {
+                        placemarks.add(new ymaps.Placemark(coords, {}, {
+                            preset: presets[grade]
+                        }));
+                    });*/
+                });
+                console.log(coords.join('\t'));
+                map.geoObjects.add(placemarks);
+            });
+
+            var map = new ymaps.Map('map', {
+                center: [55, 37],
+                zoom: 2
+            });
         }
     </script>
 </head><body>
