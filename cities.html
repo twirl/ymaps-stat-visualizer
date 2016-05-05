@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head>
+    <meta charset="utf-8"/>
+    <title>Yandex Maps API Stat Visualizer module example</title>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=en_US&mode=debug"></script>
+    <script src="statVisualizer.js"></script>
+    <style>
+        html, body, #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <script>
+        ymaps.ready({
+            require: ['StatVisualizer']
+        }).done(function () {
+            fetch('example.csv').then(function (response) {
+                return response.text();
+            }).then(visualize);
+        });
+        
+        function visualize (text) {
+            var cities = [],
+                stat = [];
+            text.split('\n').forEach(function (line) {
+                var parts = line.split('\t');
+                cities.push(parts[0]);
+                stat.push(parts.slice(1));
+            });
+            
+            console.log(cities);
+            console.log(stat);
+        }
+    </script>
+</head><body>
+    <div id="map"></div>
+</body></html>
