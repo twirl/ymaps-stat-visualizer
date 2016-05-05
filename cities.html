@@ -2,7 +2,8 @@
 <html><head>
     <meta charset="utf-8"/>
     <title>Yandex Maps API Stat Visualizer module example</title>
-    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&mode=debug&key=ALrsKlcBAAAA04RfXwMAE3glTsgfYohKrOdgtinxi43jJwsAAAAAAAAAAADaJy0VFaJpVcAtfNTwhU4y2Oc34g=="></script>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&mode=debug"></script>
+    <script src="pie-chart-clusterer.min.js"></script>
     <script src="statVisualizer.js"></script>
     <style>
         html, body, #map {
@@ -14,7 +15,7 @@
     </style>
     <script>
         ymaps.ready({
-            require: ['StatVisualizer']
+            require: ['StatVisualizer', 'PieChartClusterer']
         }).done(function () {
             fetch('cities.csv').then(function (response) {
                 return response.text();
@@ -25,23 +26,38 @@
             var cities = [],
                 stat = [];
             text.split('\n').forEach(function (line, index) {
+                var parts = line.split('\t');
                 if (index > 0) {
-                    var parts = line.split('\t');
-                    cities.push(parts[0]);
-                    stat.push(parts.slice(1).reduce(function (grades, cell) {
-                        if (cell == 'Ваще норм') {
-                            grades.push('1');
-                        } else if (cell == 'Так себе') {
-                            grades.push('0');
-                        } else if (cell == 'Буэээ') {
-                            grades.push('-1');
+                    if (cities[index - 1]) {
+                        cities[index - 1].properties = { name: parts[0] };
+                        stat.push(parts.slice(1).reduce(function (grades, cell) {
+                            if (cell == 'Ваще норм') {
+                                grades.push('1');
+                            } else if (cell == 'Так себе') {
+                                grades.push('0');
+                            } else if (cell == 'Буэээ') {
+                                grades.push('-1');
+                            }
+                            return grades;
+                        }, []));
+                    }
+                } else {
+                    parts.forEach(function (coords) {
+                        if (coords != 'n/a') {
+                            cities.push({
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: coords.split(',').map(Number)
+                                }
+                            });
                         }
-                        return grades;
-                    }, []));
+                    })
                 }
             });
+            console.log(cities);
             
-            var placemarks = new ymaps.GeoObjectCollection(),
+            var placemarks = [],
+                clusterer = new ymaps.PieChartClusterer(),
                 presets = {
                     '-1': 'islands#brownIcon',
                     '0': 'islands#grayIcon',
@@ -49,28 +65,23 @@
                 },
                 coords = [];
 
-            ymaps.vow.all(cities.map(function (city) {
-                return ymaps.geocode(city);
-            })).done(function (cities) {
-                cities.forEach(function (city, index) {
-                    var first = city.geoObjects.get(0);
-
-                    coords.push(first && first.geometry.getCoordinates() || 'n/a');
-
-                    /*stat[index].forEach(function (grade) {
-                        placemarks.add(new ymaps.Placemark(coords, {}, {
-                            preset: presets[grade]
-                        }));
-                    });*/
+            cities.forEach(function (city, index) {
+                stat[index].forEach(function (grade) {
+                    placemarks.push(new ymaps.Placemark(city.geometry.coordinates, {
+                        name: city.properties.name
+                    }, {
+                        preset: presets[grade]
+                    }));
                 });
-                console.log(coords.join('\t'));
-                map.geoObjects.add(placemarks);
             });
+            clusterer.add(placemarks);
 
             var map = new ymaps.Map('map', {
                 center: [55, 37],
                 zoom: 2
             });
+
+            map.geoObjects.add(clusterer);
         }
     </script>
 </head><body>
